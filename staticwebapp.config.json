@@ -1,0 +1,30 @@
+{
+  "routes": [
+    { "route": "/.auth/login/github", "statusCode": 404 },
+    { "route": "/login", "rewrite": "/index.html" },
+    { "route": "/logout", "redirect": "/.auth/logout?post_logout_redirect_uri=/", "statusCode": 302 },
+    { "route": "/dashboard/*", "allowedRoles": ["authenticated"] },
+    { "route": "/api/me", "allowedRoles": ["authenticated"] },
+    { "route": "/api/tickets*", "allowedRoles": ["authenticated"] },
+    { "route": "/api/ticket-updates*", "allowedRoles": ["authenticated"] },
+    { "route": "/api/admin/*", "allowedRoles": ["authenticated"] }
+  ],
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/api/*", "/assets/*"]
+  },
+  "responseOverrides": {
+    "401": { "redirect": "/login", "statusCode": 302 },
+    "403": { "rewrite": "/index.html", "statusCode": 403 }
+  },
+  "globalHeaders": {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Content-Security-Policy": "default-src 'self'; connect-src 'self' https://login.microsoftonline.com https://graph.microsoft.com https://api.openai.com; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+  },
+  "mimeTypes": {
+    ".json": "application/json"
+  }
+}

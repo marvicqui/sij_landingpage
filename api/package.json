@@ -1,0 +1,15 @@
+{
+  "name": "sij-landingpage-api",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/functions/*.js",
+  "scripts": {
+    "start": "func start",
+    "lint": "node --check src/functions/*.js && node --check src/lib/*.js"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.8.0",
+    "@azure/cosmos": "^4.4.1"
+  },
+  "devDependencies": {}
+}

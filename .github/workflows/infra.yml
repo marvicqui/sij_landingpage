@@ -1,0 +1,56 @@
+name: Provision Azure resources
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy Bicep
+        id: deploy
+        run: |
+          az deployment group create \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --template-file infra/main.bicep \
+            --parameters infra/parameters/prod.bicepparam \
+            --query properties.outputs > outputs.json
+          cat outputs.json
+
+      - name: Configure Static Web App settings
+        run: |
+          SWA_NAME=$(jq -r '.staticWebAppName.value' outputs.json)
+          COSMOS_ACCOUNT=$(jq -r '.cosmosAccountName.value' outputs.json)
+          COSMOS_ENDPOINT=$(jq -r '.cosmosEndpoint.value' outputs.json)
+          COSMOS_KEY=$(az cosmosdb keys list --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name "$COSMOS_ACCOUNT" --query primaryMasterKey -o tsv)
+          az staticwebapp appsettings set \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --name "$SWA_NAME" \
+            --setting-names \
+              COSMOS_ENDPOINT="$COSMOS_ENDPOINT" \
+              COSMOS_KEY="$COSMOS_KEY" \
+              COSMOS_DATABASE="sij-helpdesk" \
+              COSMOS_CONTAINER="helpdesk" \
+              ADMIN_EMAILS="mvicente@sij.mx" \
+              ENGINEER_EMAILS="mvicente@sij.mx,soporte@sij.mx" \
+              ALLOWED_CLIENT_DOMAINS="itsas.com.mx,sij.mx" \
+              MAIL_SUPPORT_FROM="soporte@sij.mx" \
+              MAIL_LEADS_TO="ventas@sij.mx" \
+              GRAPH_TENANT_ID="${{ vars.AZURE_TENANT_ID }}" \
+              GRAPH_CLIENT_ID="${{ secrets.GRAPH_CLIENT_ID }}" \
+              GRAPH_CLIENT_SECRET="${{ secrets.GRAPH_CLIENT_SECRET }}" \
+              OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+              OPENAI_MODEL="${{ vars.OPENAI_MODEL || 'gpt-4o-mini' }}"
