@@ -21,6 +21,18 @@ function principalEmail(principal) {
   return normalizeEmail(claim?.val || principal?.userDetails || '');
 }
 
+async function isConfiguredEngineer(email) {
+  try {
+    const rows = await query('SELECT VALUE c FROM c WHERE c.type = @type AND c.email = @email', [
+      { name: '@type', value: 'engineer' },
+      { name: '@email', value: email }
+    ]);
+    return rows.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 async function isAllowedClient(email) {
   const domain = emailDomain(email);
   const envDomains = csv('ALLOWED_CLIENT_DOMAINS');
@@ -45,7 +57,7 @@ export async function getSession(request) {
   const engineerEmails = csv('ENGINEER_EMAILS');
   let role = 'client';
   if (adminEmails.includes(email)) role = 'admin';
-  else if (engineerEmails.includes(email)) role = 'engineer';
+  else if (engineerEmails.includes(email) || await isConfiguredEngineer(email)) role = 'engineer';
   else if (!(await isAllowedClient(email))) return { authenticated: true, allowed: false, role: 'none', user: { email } };
   return { authenticated: true, allowed: true, role, user: { email, provider: principal.identityProvider, name: principal.userDetails } };
 }
